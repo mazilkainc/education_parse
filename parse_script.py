@@ -1,6 +1,8 @@
 import os, sys
 import argparse
 import re
+import progressbar
+import time
 
 files = []
 
@@ -12,11 +14,21 @@ def work_with_file(path, search):
         except PermissionError as err:
             print(f'Permission denied: {err}')
 
+
 def read_and_write(path, search):
     with open(path, 'r', encoding='utf-8') as input_file:
-        for line in input_file:
-            if re.findall(f"{search}", line):
-                print(line)
+        if os.path.exists(os.getcwd().join('out.txt')) == True:
+            with open('out.txt', 'a', encoding='utf-8') as out_file: #if the output file exists, add new lines (for searching in several files)
+                for line in input_file:
+                    if re.findall(f"{search}", line):
+                        out_file.write(line)
+
+        elif os.path.exists(os.getcwd().join('out.txt')) == False:  #if the output file does not exist - creates it, (to read multiple files in the folder)
+            with open('out.txt', 'w', encoding='utf-8') as out_file:
+                for line in input_file:
+                    if re.findall(f"{search}", line):
+                        out_file.write(line)
+
 
 def createParser():
     parser = argparse.ArgumentParser()
@@ -37,7 +49,9 @@ def check_file(path, search):
             print('is file')
             file_name, file_name_res = os.path.splitext(path)
             if re.match('\.log$|\.txt', str(file_name_res)): #other formats are unlikely
+                file_bar = progressbar.ProgressBar(maxval=os.path.getsize(path)).start()
                 work_with_file(path, search)
+                file_bar.finish()
         elif os.path.isdir(path) == True: #if it's a dir search for files in dir
             print('is dir')
             try:
@@ -45,8 +59,13 @@ def check_file(path, search):
                     if re.match('(\w+\.+log$)|(\w+\.+txt$)', str(file_name)):  #other formats are unlikely
                         files.append(os.path.join(path, file_name))
                 try:
+                    bar = progressbar.ProgressBar(maxval=len(files)).start()
+                    bar_ind = 1
                     for file_name in files:
                         work_with_file(file_name, search)
+                        bar.update(bar_ind)
+                        bar_ind = bar_ind + 1
+                    bar.finish()
                 except FileNotFoundError as e:
                     print(e)
             except PermissionError as err:
